@@ -4,23 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AR Viewer</title>
- 
+
   <!-- Google Model Viewer -->
   <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
- 
+
   <style>
     /* ─── Reset ─────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; }
- 
+
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
       overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #1a1a2e; /* deep neutral for 3D view backdrop */
+      background: #1a1a2e;
     }
- 
+
     /* ─── Model Viewer ───────────────────────────────────────────── */
     model-viewer {
       width: 100vw;
@@ -28,22 +28,22 @@
       display: block;
       --progress-bar-color: #7c3aed;
     }
- 
+
     /* Hide the native floating AR button completely */
     model-viewer::part(default-ar-button),
     [slot="ar-button"] {
       display: none !important;
     }
- 
+
     /* ─── Custom AR Launch Button ────────────────────────────────── */
     #ar-launch-btn {
-      display: none; /* shown via JS only when AR is supported */
+      display: none;
       position: fixed;
       bottom: 36px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 100;
- 
+
       padding: 14px 32px;
       border: none;
       border-radius: 50px;
@@ -53,15 +53,14 @@
       letter-spacing: 0.4px;
       color: #fff;
       white-space: nowrap;
- 
-      /* Purple-to-blue gradient */
+
       background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
       box-shadow: 0 8px 28px rgba(124, 58, 237, 0.55),
                   0 2px 6px rgba(0,0,0,0.3);
- 
+
       transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
- 
+
     #ar-launch-btn:hover,
     #ar-launch-btn:focus-visible {
       transform: translateX(-50%) translateY(-2px) scale(1.03);
@@ -69,11 +68,11 @@
                   0 4px 10px rgba(0,0,0,0.3);
       outline: none;
     }
- 
+
     #ar-launch-btn:active {
       transform: translateX(-50%) scale(0.97);
     }
- 
+
     #ar-launch-btn .btn-icon {
       display: inline-block;
       margin-right: 8px;
@@ -81,23 +80,23 @@
       vertical-align: middle;
       line-height: 1;
     }
- 
+
     /* ─── No-AR Error / Warning Bar ─────────────────────────────── */
     #no-ar-bar {
-      display: none; /* shown via JS only when AR is NOT supported */
+      display: none;
       position: fixed;
       bottom: 0;
       left: 0;
       width: 100%;
       z-index: 100;
- 
-      padding: 14px 48px 20px 20px; /* right padding for close btn */
+
+      padding: 14px 48px 20px 20px;
       background: linear-gradient(135deg, #b91c1c 0%, #c2410c 100%);
       color: #fff;
       text-align: center;
       box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
     }
- 
+
     #no-ar-bar .bar-title {
       display: flex;
       align-items: center;
@@ -107,22 +106,22 @@
       font-weight: 700;
       margin-bottom: 5px;
     }
- 
+
     #no-ar-bar .bar-icon { font-size: 20px; line-height: 1; }
- 
+
     #no-ar-bar .bar-body {
       font-size: 13px;
       line-height: 1.55;
       opacity: 0.93;
     }
- 
+
     #no-ar-bar .bar-body .urdu {
       display: block;
       margin-top: 3px;
       font-size: 12px;
       opacity: 0.82;
     }
- 
+
     /* Dismiss button */
     #bar-close-btn {
       position: absolute;
@@ -138,10 +137,71 @@
       transition: color 0.15s;
     }
     #bar-close-btn:hover { color: #fff; }
+
+    /* ─── Loading Overlay ────────────────────────────────────────── */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;                        /* top/right/bottom/left: 0 */
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: #1a1a2e;            /* matches body background */
+      transition: opacity 0.5s ease;
+    }
+
+    #loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Pulsing logo / spinner ring */
+    .loader-ring {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 4px solid rgba(124, 58, 237, 0.2);
+      border-top-color: #7c3aed;
+      border-right-color: #2563eb;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-text {
+      color: rgba(255, 255, 255, 0.75);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    /* Subtle animated dots after "Loading" */
+    .loader-text::after {
+      content: '';
+      display: inline-block;
+      animation: dots 1.4s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%   { content: '';    }
+      25%  { content: '.';   }
+      50%  { content: '..';  }
+      75%  { content: '...'; }
+    }
   </style>
 </head>
 <body>
- 
+
+  <!-- ── Loading Overlay (visible until model fires 'load') ─────── -->
+  <div id="loading-overlay" role="status" aria-label="Loading 3D model">
+    <div class="loader-ring"></div>
+    <p class="loader-text">Loading</p>
+  </div>
+
   <!-- ── 3D / AR Model Viewer ────────────────────────────────────── -->
   <model-viewer
     id="ar-viewer"
@@ -168,13 +228,13 @@
     <!-- Native AR button — hidden via CSS, slot kept for compatibility -->
     <button slot="ar-button" style="display:none;" aria-hidden="true"></button>
   </model-viewer>
- 
+
   <!-- ── Custom AR Launch Button (AR-capable devices only) ─────── -->
   <button id="ar-launch-btn" aria-label="Launch AR Experience">
     <span class="btn-icon" aria-hidden="true">🔮</span>
     Launch AR Experience
   </button>
- 
+
   <!-- ── No-AR Warning Bar (non-AR devices only) ───────────────── -->
   <div id="no-ar-bar" role="alert" aria-live="polite">
     <button id="bar-close-btn" aria-label="Dismiss">✕</button>
@@ -184,65 +244,100 @@
     </div>
     <div class="bar-body">
       Your device does not support ARCore. Showing 3D model instead.
-      
     </div>
   </div>
- 
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SCRIPT 1 — Disable right-click context menu
+  ══════════════════════════════════════════════════════════════════ -->
+  <script>
+    document.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+    });
+  </script>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SCRIPT 2 — Block DevTools keyboard shortcuts
+       Blocked: F12 · Ctrl+U · Ctrl+Shift+I · Ctrl+Shift+J · Ctrl+Shift+C
+  ══════════════════════════════════════════════════════════════════ -->
+  <script>
+    document.addEventListener('keydown', function (e) {
+      const ctrl  = e.ctrlKey  || e.metaKey;   // Cmd on Mac
+      const shift = e.shiftKey;
+      const key   = e.key;
+
+      const blocked =
+        key === 'F12'                                   ||  // DevTools toggle
+        (ctrl && key.toLowerCase() === 'u')             ||  // View Source
+        (ctrl && shift && key.toLowerCase() === 'i')   ||  // Inspect Element
+        (ctrl && shift && key.toLowerCase() === 'j')   ||  // Console (Chrome)
+        (ctrl && shift && key.toLowerCase() === 'c');       // Element picker
+
+      if (blocked) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true); /* capture phase so it fires before any other listener */
+  </script>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       SCRIPT 3 — Loading overlay + AR detection
+  ══════════════════════════════════════════════════════════════════ -->
   <script>
     (function () {
-      const modelViewer = document.getElementById('ar-viewer');
-      const arBtn       = document.getElementById('ar-launch-btn');
-      const noArBar     = document.getElementById('no-ar-bar');
-      const closeBtn    = document.getElementById('bar-close-btn');
- 
+      const modelViewer  = document.getElementById('ar-viewer');
+      const arBtn        = document.getElementById('ar-launch-btn');
+      const noArBar      = document.getElementById('no-ar-bar');
+      const closeBtn     = document.getElementById('bar-close-btn');
+      const overlay      = document.getElementById('loading-overlay');
+
       /* ── Dismiss bar ────────────────────────────────────────────── */
       closeBtn.addEventListener('click', () => {
         noArBar.style.display = 'none';
       });
- 
-      /* ── Main AR detection logic ─────────────────────────────────
-         canActivateAR is only reliable AFTER the model has loaded.
-         We listen for the 'load' event before checking.
-      ─────────────────────────────────────────────────────────────── */
+
+      /* ── Hide overlay once model has loaded ─────────────────────── */
+      function hideOverlay() {
+        overlay.classList.add('hidden');
+        // Remove from DOM after fade-out so it can't block pointer events
+        overlay.addEventListener('transitionend', () => overlay.remove(), { once: true });
+      }
+
+      /* ── AR detection (runs after 'load' so flags are resolved) ─── */
       function initARUI() {
+        hideOverlay();
+
         if (modelViewer.canActivateAR) {
-          // ✅ AR supported → show the purple launch button
           arBtn.style.display = 'block';
- 
+
           arBtn.addEventListener('click', () => {
             modelViewer.activateAR();
           });
- 
-          // iOS Quick Look: Safari needs a real user gesture.
-          // First tap anywhere on the page will open the USDZ viewer.
+
+          // iOS Quick Look fallback
           if (!navigator.xr) {
             document.addEventListener('touchend', function iosFallback() {
               document.removeEventListener('touchend', iosFallback);
               modelViewer.activateAR();
             }, { once: true });
           }
- 
+
         } else {
-          // ❌ AR not supported → show red bilingual warning bar
           noArBar.style.display = 'block';
         }
       }
- 
-      // Attach to 'load' event; double rAF gives model-viewer time to
-      // resolve AR capability flags before we read them.
+
       modelViewer.addEventListener('load', function onLoad() {
         modelViewer.removeEventListener('load', onLoad);
         requestAnimationFrame(() => requestAnimationFrame(initARUI));
       });
- 
-      // Guard: if model was already loaded before this script ran
+
+      // Guard: model was already loaded before script ran
       if (modelViewer.loaded) {
         requestAnimationFrame(() => requestAnimationFrame(initARUI));
       }
- 
-      /* ── AR session state → sync button visibility ───────────────
-         Hide the button while in AR; restore it if session ends/fails.
-      ─────────────────────────────────────────────────────────────── */
+
+      /* ── AR session state → sync button visibility ───────────────── */
       modelViewer.addEventListener('ar-status', (e) => {
         console.log('[AR Status]', e.detail.status);
         switch (e.detail.status) {
@@ -257,7 +352,6 @@
       });
     })();
   </script>
- 
+
 </body>
 </html>
- 
